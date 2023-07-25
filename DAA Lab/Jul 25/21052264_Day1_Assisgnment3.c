@@ -1,3 +1,4 @@
+//Take 2 array as input. Merge the arrays and sort the final array
 #include <stdio.h>
 
 int main(){
