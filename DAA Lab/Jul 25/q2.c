@@ -1,3 +1,6 @@
+/*Write a program to display an array of n integers (n>1), where every
+index of the array should contain the product of all elements in the input array except the element
+at the given index. Solve this problem by taking a single loop and without an additional array.*/
 #include <stdio.h>
 
 int main(){
