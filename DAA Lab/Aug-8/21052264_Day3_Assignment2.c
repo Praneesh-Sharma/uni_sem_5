@@ -20,7 +20,7 @@ int main()
 	num = (rand()%(upper-lower+1)) + lower;
 	
 	do{
-		printf("\nGuess the number between the given range: \n");
+		printf("\nGuess the number:");
 		scanf("%d", &guess);
 		if(guess>num)
 			printf("Try a smaller number\n");
