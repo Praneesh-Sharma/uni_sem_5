@@ -1,44 +1,100 @@
+/*Write a sender and receiver program in C by passing the IP address and the port number of
+each other through the command line arguments using connection less socket. Both of them
+will exchange messages with each other continuously. If any one of them will receive the “exit”
+message from the other end then both of them will close the connection. (Assume both the
+client and server are running with in the same host)*/
 #include <stdio.h>
-#include <stdlib.h>
-// #include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <netdb.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#define MYPORT 4952 // the port users will be connecting to
-#define MAXBUFLEN 200
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h> // read(), write(), close()
+#define MAX 80
+#define PORT 8080
+#define SA struct sockaddr
+
+// Function designed for chat between client and server.
+void func(int connfd)
+{
+char buff[MAX];
+int n;
+// infinite loop for chat
+for (;;) {
+bzero(buff, MAX);
+
+// read the message from client and copy it in buffer
+read(connfd, buff, sizeof(buff));
+// print buffer which contains the client contents
+printf("From client: %s\t To client : ", buff);
+bzero(buff, MAX);
+n = 0;
+// copy server message in the buffer
+while ((buff[n++] = getchar()) != '\n')
+;
+
+// and send that buffer to client
+write(connfd, buff, sizeof(buff));
+
+// if msg contains "Exit" then server exit and chat ended.
+if (strncmp("exit", buff, 4) == 0) {
+printf("Server Exit...\n");
+break;
+}
+}
+}
+
+// Driver function
 int main()
 {
-int sockfd;
-struct sockaddr_in my_addr; // my address information
-struct sockaddr_in their_addr; // connector's address information
-socklen_t addr_len;
-int numbytes;
-char buf[MAXBUFLEN];
-if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-perror("socket");
-exit(1);
+int sockfd, connfd, len;
+struct sockaddr_in servaddr, cli;
+
+// socket create and verification
+sockfd = socket(AF_INET, SOCK_STREAM, 0);
+if (sockfd == -1) {
+printf("socket creation failed...\n");
+exit(0);
 }
-my_addr.sin_family = AF_INET; // host byte order
-my_addr.sin_port = htons(MYPORT); // short, network byte order
-my_addr.sin_addr.s_addr = INADDR_ANY; // automatically fill with my IP
-//memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
-if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof my_addr) == -1) {
-perror("bind");
-exit(1);
+else
+printf("Socket successfully created..\n");
+bzero(&servaddr, sizeof(servaddr));
+
+// assign IP, PORT
+servaddr.sin_family = AF_INET;
+servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+servaddr.sin_port = htons(PORT);
+
+// Binding newly created socket to given IP and verification
+if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
+printf("socket bind failed...\n");
+exit(0);
 }
-addr_len = sizeof their_addr;
-if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
-(struct sockaddr *)&their_addr, &addr_len)) == -1) {
-perror("recvfrom");
-exit(1);
+else
+printf("Socket successfully binded..\n");
+
+// Now server is ready to listen and verification
+if ((listen(sockfd, 5)) != 0) {
+printf("Listen failed...\n");
+exit(0);
 }
-printf("got packet from %s\n",inet_ntoa(their_addr.sin_addr));
-printf("packet is %d bytes long\n",numbytes);
-buf[numbytes] = '\0';
-printf("packet contains \"%s\"\n",buf);
+else
+printf("Server listening..\n");
+len = sizeof(cli);
+
+// Accept the data packet from client and verification
+connfd = accept(sockfd, (SA*)&cli, &len);
+if (connfd < 0) {
+printf("server accept failed...\n");
+exit(0);
+}
+else
+printf("server accept the client...\n");
+
+// Function for chatting between client and server
+func(connfd);
+
+// After chatting close the socket
 close(sockfd);
-return 0;
 }
