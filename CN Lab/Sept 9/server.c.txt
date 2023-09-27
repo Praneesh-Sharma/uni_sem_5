@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define MAX_CLIENTS 5
+#define BUFFER_SIZE 1024
+
+void handle_client(int client_socket) {
+    char buffer[BUFFER_SIZE];
+    int bytes_received;
+
+    // Welcome message
+    send(client_socket, "Welcome to the chat server!\n", sizeof("Welcome to the chat server!\n"), 0);
+
+    while (1) {
+        // Receive data from the client
+        bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
+
+        if (bytes_received < 0) {
+            perror("Error in recv");
+            break;
+        } else if (bytes_received == 0) {
+            printf("Client disconnected.\n");
+            break;
+        }
+
+        buffer[bytes_received] = '\0';
+        printf("Received: %s", buffer);
+
+        // Check if the client wants to exit
+        if (strcmp(buffer, "bye\n") == 0) {
+            printf("Client wants to exit. Closing the connection.\n");
+            break;
+        }
+
+        // Echo back the message to the client
+        send(client_socket, buffer, strlen(buffer), 0);
+    }
+
+    // Close the client socket
+    close(client_socket);
+}
+
+int main() {
+    int server_socket, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    // Create a socket
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket == -1) {
+        perror("Error in socket");
+        exit(1);
+    }
+
+    // Configure the server address
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(12345); // Change this port as needed
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind the socket
+    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+        perror("Error in bind");
+        exit(1);
+    }
+
+    // Listen for incoming connections
+    if (listen(server_socket, MAX_CLIENTS) == -1) {
+        perror("Error in listen");
+        exit(1);
+    }
+
+    printf("Server is listening...\n");
+
+    while (1) {
+        // Accept a connection from a client
+        client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
+        if (client_socket == -1) {
+            perror("Error in accept");
+            continue;
+        }
+
+        printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        // Handle the client in a separate thread or process
+        handle_client(client_socket);
+    }
+
+    // Close the server socket
+    close(server_socket);
+
+    return 0;
+}
+
